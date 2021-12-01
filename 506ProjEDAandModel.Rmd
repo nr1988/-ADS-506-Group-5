@@ -1,0 +1,101 @@
+---
+title: "506EDAandModeling"
+author: "Andrew Zazueta"
+date: "12/1/2021"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Setting Work Directory, Loading Libraries, and Loading Data
+
+```{r, warning=FALSE, message=FALSE}
+setwd("C:/Users/mzazu/OneDrive/Documents/USD papers/506/AirQualityUCI")
+library('astsa')
+library('xlsx')
+library('tidyverse')
+library('lubridate')
+library('imputeTS')
+library('Rcpp')
+aqClean <- read_csv('AirQualityCleaned.csv')
+```
+
+# Exploritory Data Analysis
+
+Now, lets look at some of the time series plots.
+
+### Time Series Plots
+
+```{r}
+par(mfrow = c(3,1))
+tsplot(x = aqClean$DateTime, y = aqClean$CO.GT., 
+       main = "True hourly averaged concentration CO in mg/m^3", ylab = "", xaxt="none", 
+       cex.main = 0.85, cex.axis = 0.85, cex.lab = 0.85)
+tsplot(x = aqClean$DateTime, y = aqClean$C6H6.GT., 
+       main = "True hourly averaged Benzene concentration in microg/m^3", ylab = "", 
+       xaxt="none", cex.main = 0.85, cex.axis = 0.85, cex.lab = 0.85)
+tsplot(x = aqClean$DateTime, y = aqClean$NOx.GT., 
+       main = "True hourly averaged NOx concentration in ppb", ylab = "", xaxt="none", 
+       cex.main = 0.85, cex.axis = 0.85, cex.lab = 0.85)
+```
+
+After taking a look at a few time series in the data set, it is apparent that it would be better to look at daily average than to look at hourly average. Doing this would make the data more clear and less noisy, and also allow for better forecasting. 
+
+```{r, warning=FALSE}
+aqClean$Day <- format(aqClean$DateTime, format = "%Y-%m-%d")
+aqDaily <- aggregate(aqClean, list(as.Date(aqClean$Day)), FUN=mean) 
+aqDaily <- aqDaily[-c(14, 15)]
+names(aqDaily)[1] <- "Day"
+```
+
+```{r}
+# Now lets take a look at the same graphs now
+par(mfrow = c(3,1))
+tsplot(x = aqDaily$Day, y = aqDaily$CO.GT., 
+       main = "True daily averaged concentration CO in mg/m^3", ylab = "", xlab = "Time (days)",
+       cex.main = 0.85, cex.axis = 0.85, cex.lab = 0.85, xaxt="n")
+tsplot(x = aqDaily$Day, y = aqDaily$C6H6.GT., 
+       main = "True daily averaged Benzene concentration in microg/m^3", ylab = "", 
+       cex.main = 0.85, cex.axis = 0.85, cex.lab = 0.85, xlab = "Time (days)", xaxt="none")
+tsplot(x = aqDaily$Day, y = aqDaily$NOx.GT., 
+       main = "True daily averaged NOx concentration in ppb", ylab = "", xlab = "Time (days)",  
+       cex.main = 0.85, cex.axis = 0.85, cex.lab = 0.85, xaxt="none")
+```
+
+These graphs are much easier to read, so now we can move on to making the time series stationary.
+
+### Differencing Data
+
+```{r}
+# Same graphs for reference
+par(mfrow = c(3,1))
+tsplot(diff(aqDaily$CO.GT.), 
+       main = "True daily growth concentration of CO in mg/m^3", ylab = "", xlab = "Time (days)",
+       cex.main = 0.85, cex.axis = 0.85, cex.lab = 0.85, xaxt="n")
+tsplot(diff(aqDaily$C6H6.GT.), 
+       main = "True daily growth of Benzene concentration in microg/m^3", ylab = "", 
+       cex.main = 0.85, cex.axis = 0.85, cex.lab = 0.85, xlab = "Time (days)", xaxt="none")
+tsplot(diff(aqDaily$NOx.GT.), 
+       main = "True daily growth of NOx concentration in ppb", ylab = "", xlab = "Time (days)",  
+       cex.main = 0.85, cex.axis = 0.85, cex.lab = 0.85, xaxt="none")
+```
+
+The differencing appeared to make our data stationary, so now we can move on to building an ARIMA model from our data. We can also create a cross correlation graph (CCF) between different features to determine if they have similar traits. For example, seeing the CCF between temperature and other features can yield interesting results as to what atmospheric chemicals contribute to temperature changes. 
+
+### Looking at P/ACF and CCF for Different Features
+
+```{r}
+# CO in mg/m^3
+acf2(diff(aqDaily$CO.GT.)) # Both ACF and PACF cut off after lag 2, indicating ARIMA(2,1,2)
+
+# Benzene in microg/m^3 
+acf2(diff(aqDaily$C6H6.GT.)) # Appears to have a weekly spike
+
+# NOx in ppb
+acf2(diff(aqDaily$NOx.GT.)) # ACF cuts off after lag 2, indicating ARIMA(0,1,2)
+# There also seems to be a weekly component in the ACF as well. 
+```
