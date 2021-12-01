@@ -1,0 +1,154 @@
+---
+title: "506Proj"
+author: "Andrew Zazueta"
+date: "11/28/2021"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Setting Work Directory, Loading Libraries, and Loading Data
+
+```{r, warning=FALSE, message=FALSE}
+setwd("C:/Users/mzazu/OneDrive/Documents/USD papers/506/AirQualityUCI")
+library('astsa')
+library('xlsx')
+library('tidyverse')
+library('lubridate')
+library('imputeTS')
+library('Rcpp')
+aq <- read.xlsx('AirQualityUCI.xlsx', sheetIndex = 1, header = TRUE)
+```
+
+# Data Cleaning
+
+### Editing the Date and Time Columns
+
+```{r}
+# The time column is reading in random dates, so we are going to fix this issue first
+head(aq[2], 10)
+
+## Splitting Time and retrieving hour
+hour <- aq %>% 
+  separate(Time , c("1", "2", "3", "Hour"), extra='drop') %>%
+  select("Hour")
+
+head(hour, 20)
+
+## Adding Hour to data frame and getting rid of Time
+aq$Hour <- as.numeric(unlist(hour))
+aq <- aq[-2]
+
+## Merging Date and Hour and getting rid of Date and Hour columns
+aq$DateTime <- paste(aq$Date, aq$Hour)
+aq <- aq[-c(1,17)]
+
+## Making DateTime into Date and Time data type
+aq$DateTime <- as.POSIXct(aq$DateTime,format="%Y-%m-%d %H", tz= "CET")
+```
+
+### Checking for missing data
+
+```{r}
+# Checking percentage of missing values in each column
+cols <- colnames(aq)
+for(i in 1:length(aq)){
+  missing <- round(sum(is.na(aq[i]))/dim(aq)[1], 5) * 100
+  print(c(cols[i], missing))
+} 
+
+# Removing NA. and NA..1
+aq <- aq[-c(14, 15)]
+
+# Finding out where the missing values are
+which(is.na(aq[1]))
+
+# Since each column is missing the same percentage of values, and aq[1]'s missing 
+# values are all in an order, lets see what happens to the missing values when we 
+# remove these rows.
+aqNew <- aq[complete.cases(aq[1]), ]
+cols <- colnames(aqNew)
+for(i in 1:length(aqNew)){
+  missing <- round(sum(is.na(aqNew[i]))/dim(aqNew)[1], 5) * 100
+  print(c(cols[i], missing))
+} 
+
+# Now we are only missing values in DateTime
+which(is.na(aqNew$DateTime))
+
+# Since this is only two rows, it is simplest to just remove them
+aqNew2 <- aqNew[complete.cases(aqNew$DateTime), ]
+```
+
+### Checking for outliers
+
+```{r}
+par(mfrow = c(2,2))
+cols <- colnames(aqNew2)
+for(i in 1:4){
+  boxplot(aqNew2[i], ylab = cols[i])
+}
+```
+
+```{r}
+par(mfrow = c(2,2))
+for(i in 5:8){
+  boxplot(aqNew2[i], ylab = cols[i])
+}
+```
+
+```{r}
+par(mfrow = c(2,2))
+for(i in 9:12){
+  boxplot(aqNew2[i], ylab = cols[i])
+}
+```
+
+```{r}
+boxplot(aqNew2[13], ylab = cols[13])
+```
+
+A lot of these boxplots have values of -200, which is impossible for the measurements. So, the next step is to remove any negative values from the data set. The rest of the outliers are impossible to distinguish if they are from misinputs or not, so they will be kept. 
+
+```{r}
+aqNew3 <- aqNew2
+aqNew3[aqNew3 < -10] <- NA
+```
+
+We should now inspect the columns and see what percentage of values are missing from each column.
+
+```{r}
+cols <- colnames(aqNew3)
+for(i in 1:length(aqNew3)){
+  missing <- round(sum(is.na(aqNew3[i]))/dim(aqNew3)[1], 5) * 100
+  print(c(cols[i], missing))
+} 
+
+# NMHC.GT. is missing 90% of its values, so this feature will be removed
+aqNew3 <- aqNew3[-3]
+```
+
+Now, we should impute values into the missing values to avoid gaps in our time series.
+
+```{r}
+# We are using a method which finds the moving average to impute missing values
+aqNew4 <- aqNew3
+for(i in 1:length(aqNew4)){
+  aqNew4[i] <- na_ma(aqNew4[i], k = 4, weighting = "exponential", maxgap = Inf)
+}
+```
+
+```{r}
+# Examining the new dimensions of our data set
+dim(aqNew4)
+```
+
+### Reading cleaned data frame into new CSV file
+
+```{r}
+#write.csv(aqNew4, file = 'AirQualityCleaned.csv', row.names = FALSE)
+```
