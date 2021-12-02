@@ -90,12 +90,67 @@ The differencing appeared to make our data stationary, so now we can move on to 
 
 ```{r}
 # CO in mg/m^3
-acf2(diff(aqDaily$CO.GT.)) # Both ACF and PACF cut off after lag 2, indicating ARIMA(2,1,2)
-
-# Benzene in microg/m^3 
-acf2(diff(aqDaily$C6H6.GT.)) # Appears to have a weekly spike
-
-# NOx in ppb
-acf2(diff(aqDaily$NOx.GT.)) # ACF cuts off after lag 2, indicating ARIMA(0,1,2)
-# There also seems to be a weekly component in the ACF as well. 
+acf2(diff(diff(aqDaily$CO.GT., 7))) # Weekly fluctuations
 ```
+
+Seasonal: The ACF is cutting off a lag 7s (s = 7), whereas the PACF is tailing off at lags 7s, 14s, 21s. These results imply an SMA(7), P = 0, Q = 7.
+
+Non-Seasonal: It appears that the ACF cuts off at lag 7, whereas the PACF tails off. This suggests an MA(7) with p = 0 and q = 7.
+
+```{r}
+# Benzene in microg/m^3 
+acf2(diff(aqDaily$C6H6.GT., 7)) # Appears to have a weekly spike
+```
+
+Seasonal: The PACF is cutting off a lag 1s (s = 7), whereas the ACF is tailing off at lags 1s, 7s, 14s. These results imply an SAR(1), P = 1, Q = 0.
+
+Non-Seasonal: It appears that the PACF cuts off at lag 1, whereas the ACF tails off. This suggests an AR(1) with p = 1 and q = 0.
+
+# Building Models and Forecasting
+
+### Determining the ARMA models
+
+```{r}
+# For CO
+sarima(aqDaily$CO.GT., p = 0, d = 1, q = 7, P = 0, D = 1, Q = 7, S = 7)
+```
+
+It appears to be alright. Some of our Q-statistic values are less than 0.05, but the majority are not. 
+
+```{r, warning=FALSE}
+# For Benzene
+sarima(aqDaily$C6H6.GT., p = 1, d = 1, q = 1, P = 1, D = 0, Q = 1, S = 7)
+```
+
+Adding p = 1 and P = 1 to our model improves the Q-statistic values.
+
+### Forecasting 
+
+```{r}
+# Plotting the final month of time series for CO
+x <- ts(aqDaily$CO.GT., start = decimal_date(as.Date("2004-03-10")), frequency = 365)
+CO <- window(x, start=decimal_date(as.Date("2004-03-10")),
+            end=decimal_date(as.Date("2005-03-04")))
+sarima.for(CO, n.ahead = 32, p = 0, d = 1, q = 7, P = 0, D = 1, Q = 7, S = 7, plot.all=FALSE,
+           main = "Forecasting CO")
+text(decimal_date(as.Date("2005-02-04")), 5, "PAST")
+text(decimal_date(as.Date("2005-03-20")), 5, "FUTURE")
+abline(v=decimal_date(as.Date("2005-03-04")), lty=2, col=4)
+lines(x)
+```
+
+The 'Future' portion of our graph is where the forecasting is made. The black line represents the actual data collected while the red line shows our ARMA model prediction. The grayed out areas are confidence intervals. 
+
+```{r}
+# Plotting the final month of time series for Benzene
+x <- ts(aqDaily$C6H6.GT., start = decimal_date(as.Date("2004-03-10")), frequency = 365)
+C6H6 <- window(x, start=decimal_date(as.Date("2004-03-10")),
+            end=decimal_date(as.Date("2005-03-04")))
+sarima.for(C6H6, n.ahead = 32, p = 1, d = 1, q = 1, P = 1, D = 0, Q = 1, S = 7,
+           plot.all=FALSE, main = "Forecasting Benzene")
+text(decimal_date(as.Date("2005-02-04")), 22, "PAST")
+text(decimal_date(as.Date("2005-03-20")), 22, "FUTURE")
+abline(v=decimal_date(as.Date("2005-03-04")), lty=2, col=4)
+lines(x)
+```
+
