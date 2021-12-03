@@ -179,6 +179,33 @@ abline(v=decimal_date(as.Date("2005-03-04")), lty=2, col=4)
 lines(x)
 ```
 
+```{r}
+#Plotting the final month of time series for indium oxide"
+x <- ts(aqDaily$PT08.S5.O3., start = decimal_date(as.Date("2004-03-10")), frequency = 365)
+PT08.S5<- window(x, start=decimal_date(as.Date("2004-03-10")),
+            end=decimal_date(as.Date("2005-03-04")))
+sarima.for(PT08.S5 , n.ahead = 32, p = 1, d = 1, q = 1, P = 1, D = 0, Q = 1, S = 7,
+           plot.all=FALSE, main = "Forecasting indium oxide")
+text(decimal_date(as.Date("2005-02-04")), 22, "PAST")
+text(decimal_date(as.Date("2005-03-20")), 22, "FUTURE")
+abline(v=decimal_date(as.Date("2005-03-04")), lty=2, col=4)
+lines(x)
+```
+
+```{r}
+#Plotting the final month of time series for tin oxide "
+x <- ts(aqDaily$PT08.S1.CO., start = decimal_date(as.Date("2004-03-10")), frequency = 365)
+tin_oxide<- window(x, start=decimal_date(as.Date("2004-03-10")),
+            end=decimal_date(as.Date("2005-03-04")))
+sarima.for(tin_oxide , n.ahead = 32, p = 1, d = 1, q = 1, P = 1, D = 0, Q = 1, S = 7,
+           plot.all=FALSE, main = "Forecasting  tin oxide")
+text(decimal_date(as.Date("2005-02-04")), 22, "PAST")
+text(decimal_date(as.Date("2005-03-20")), 22, "FUTURE")
+abline(v=decimal_date(as.Date("2005-03-04")), lty=2, col=4)
+lines(x)
+```
+
+
 
 
 
