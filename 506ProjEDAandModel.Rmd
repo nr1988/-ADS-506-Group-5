@@ -153,4 +153,32 @@ text(decimal_date(as.Date("2005-03-20")), 22, "FUTURE")
 abline(v=decimal_date(as.Date("2005-03-04")), lty=2, col=4)
 lines(x)
 ```
+```{r}
+#Plotting the final month of time series for NOx
+x <- ts(aqDaily$NOx.GT., start = decimal_date(as.Date("2004-03-10")), frequency = 365)
+NOx<- window(x, start=decimal_date(as.Date("2004-03-10")),
+            end=decimal_date(as.Date("2005-03-04")))
+sarima.for(NOx, n.ahead = 32, p = 1, d = 1, q = 1, P = 1, D = 0, Q = 1, S = 7,
+           plot.all=FALSE, main = "Forecasting NOx")
+text(decimal_date(as.Date("2005-02-04")), 22, "PAST")
+text(decimal_date(as.Date("2005-03-20")), 22, "FUTURE")
+abline(v=decimal_date(as.Date("2005-03-04")), lty=2, col=4)
+lines(x)
+```
+
+```{r}
+#Plotting  the final month of time series for Nitrogen Oxide(NO2)
+x <- ts(aqDaily$NO2.GT., start = decimal_date(as.Date("2004-03-10")), frequency = 365)
+NO2<- window(x, start=decimal_date(as.Date("2004-03-10")),
+            end=decimal_date(as.Date("2005-03-04")))
+sarima.for(NO2, n.ahead = 32, p = 1, d = 1, q = 1, P = 1, D = 0, Q = 1, S = 7,
+           plot.all=FALSE, main = "Forecasting Nitrogen Oxide")
+text(decimal_date(as.Date("2005-02-04")), 22, "PAST")
+text(decimal_date(as.Date("2005-03-20")), 22, "FUTURE")
+abline(v=decimal_date(as.Date("2005-03-04")), lty=2, col=4)
+lines(x)
+```
+
+
+
 
